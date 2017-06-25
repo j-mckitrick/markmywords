@@ -1,0 +1,41 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml11/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+    <link type="text/css" href="/style/main.css" rel="stylesheet" />
+    <script type="text/javascript" src="/js/jquery-1.3.1.min.js"></script>
+    <script type="text/javascript" src="/js/jquery-extensions.js"></script>
+    <script type="text/javascript" src="/js/admin.js"></script>
+    <script type="text/javascript">
+      $(admin.init);
+    </script>
+    <title>Admin</title>
+  </head>
+
+  <body>
+
+    <div id="banner">
+      <span class="BText">Mark My Words</span>
+    </div>
+
+	<!-- menu bar could be moved -->
+    <div class="Cleanframe" id="menubar">
+      <span class="Button" id="exit" onclick="window.location = '/';">Exit</span>
+    </div>
+
+    <div class="Cleanframe" id="adminpane">
+      <table id="admintable">
+		<tbody>
+		  <tr>
+			<th style="width:8%">User</th>
+			<th style="width:8%">Password</th>
+			<th class='votes' colspan='2'>Actions</th>
+		  </tr>
+		</tbody>
+      </table>
+    </div>
+
+  </body>
+
+</html>

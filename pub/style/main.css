@@ -1,0 +1,102 @@
+/*
+ * markmywords.com
+ */
+
+body {
+    color: black;
+    background-color: lightsteelblue;
+    font-family: Verdana;
+    margin: 0px;
+    padding: 0px;
+}
+
+/* id styles */
+
+#loginform {
+    padding: 8px;
+}
+
+#loginform input {
+    margin: 0px 4px;
+}
+
+#banner {
+    background-color: steelblue;
+    padding: 20px;
+}
+
+#banner .BText {
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.Button {
+    color: black;
+    background-color: steelblue;
+    text-align: center;
+    padding: 2px;
+    cursor: pointer;
+}
+
+#banner .Button {
+    color: lightsteelblue;
+    background-color: black;
+    float: right;
+    width: 60px;
+    margin-top: -20px;
+    margin-right: 64px;
+}
+
+#menubar li {
+    display: inline;
+    padding: 0px 4px;
+}
+
+#contentpane {
+}
+
+/* class styles */
+
+.Cleanframe {
+    margin: 8px;
+    padding: 8px;
+    border: steelblue 1px solid;
+}
+
+/* element styles */
+table {
+    font-size: 1em;
+    width: 100%;
+    margin-top: 1px;
+    margin-bottom: 1px;
+    border: black 1px solid;
+	border-collapse: collapse
+}
+
+th, td {
+    margin: 0px;
+    padding: 10px;
+    border: black 1px solid;
+    text-align: left;
+}
+
+.Hilite1 {
+    background: steelblue;
+}
+
+.Red {
+    color: red
+}
+
+.votes {
+    text-align: center;
+}
+
+.stats {
+    text-align: right;
+}
+
+form table, form td {
+    border: none;
+}
+

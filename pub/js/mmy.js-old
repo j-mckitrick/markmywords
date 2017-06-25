@@ -1,0 +1,584 @@
+// Mark My Words
+
+function MMY() {}
+
+// Send AJAX login form.
+MMY.dologin = function()
+{
+    var params = { username: $("#user").val(),
+				   password: $("#pass").val(),
+				   persist: $("#persist").val() };
+
+    $.post("/login", params, function(json) { MMY.donelogin(json) }, "json");
+}
+
+// Handle results of login attempt or successful signup.
+MMY.donelogin = function(json)
+{
+//	alert(json);
+    if (json.user)
+    {
+		MMY.user = json.user;
+		MMY.admin = json.admin
+
+		$("#showlogin").text("Logout");
+		$("#showlogin").unbind('click', MMY.togglelogin).click(MMY.dologout);
+
+		$("#signup").hide();
+		$("#loginform").hide("slow", MMY.doneloginOK);
+    }
+    else if (json.fail == "bad")
+    {
+		$('#login_message').addClass('Red').text('Bad login');
+    }
+    else if (json.fail == "exists")
+    {
+		alert('Username already exists');
+    }
+    else
+    {
+		$("#signup").click(MMY.showsignup).show();
+
+		// Non-members can still view content.
+		MMY.getallwords();
+    }
+}
+
+// Update UI for a successful login.
+MMY.doneloginOK = function()
+{
+    $("#username").html('Welcome, ' + MMY.user + '!');
+    $("#userdiv").show();
+    $("#getprofile").click(MMY.getprofile).show();
+
+    MMY.getallwords();
+    MMY.getpopular();
+    MMY.getpopularN();
+	MMY.getcategories();
+}
+
+MMY.dologout = function()
+{
+    window.location = "/logout";
+}
+
+// Refresh content table.
+MMY.getallwords = function()
+{
+//    $.get("/entry", MMY.gotallwords);
+    $.getJSON("/jsonentry", MMY.gotallwordsjson);
+}
+
+MMY.gotallwordsjson = function(json)
+{
+    $("#contentpane").show();
+    $("#wordsform").show();
+    $('.Row').remove();
+
+    MMY.gotjsonwords(json);
+}
+
+// Clear content table and show new data.
+MMY.gotallwords = function(xml)
+{
+    $("#contentpane").show();
+    $("#wordsform").show();
+    $('.Row').remove();
+
+    MMY.gotxmlwords(xml);
+}
+
+// Get content of drop-down list.
+MMY.getcategories = function()
+{
+    $.getJSON("/categories", function(json) { MMY.gotcategories(json) });
+}
+
+// Called via EACH, uses $(this)
+MMY.popcategories = function(i, el)
+{
+	$('<option/>').attr('value', el).text(el).appendTo('#categories');
+	$('<option/>').attr('value', el).text(el).appendTo('#q_categories');
+}
+
+// Populate drop-down list.
+MMY.gotcategories = function(json)
+{
+    var t = '- Select One -';
+    var v = '';
+
+    $('#categories').empty().append($('<option/>').attr('value', v).text(t));
+    $('#q_categories').empty().append($('<option/>').attr('value', v).text(t));
+	$(json).each(MMY.popcategories);
+/*
+    $(json).each(function(i, el) {
+			$('<option/>').attr('value', el).text(el).appendTo('#categories');
+			$('<option/>').attr('value', el).text(el).appendTo('#q_categories');
+	});
+*/
+}
+
+// Add a new item for a logged in user.
+MMY.addwords = function()
+{
+    if (!MMY.user)
+    {
+		alert('You must be logged in to add words');
+    }
+    else
+    {
+		var params = { title: $("#title").val(),
+					   words: $("#words").val(),
+					   category: $("#categories").val() };
+
+//		$.post("/entry", params, MMY.getallwords); // reload them all
+		$.post("/entry", params, MMY.gotxmlwords); // reload this one
+
+		$("#title").val('');
+		$("#words").val('');
+    }
+}
+
+MMY.addjsonword = function(i, el) // could remove 'i' if we want...
+{
+	var trID = 'tr_' + el.idx;
+	var tr   = '#' + trID;
+
+	if ($(tr).size() == 1) // Already exists, clear it.
+	{
+		$(tr).empty();
+	}
+	else if ($(tr).size() == 0) // Does not exist, create a new one.
+	{
+		$('<tr/>').attr('id', trID).appendTo('#wordstable tbody');
+		$(tr).addClass('Row Hilite' + ($('tr').size() - 1) % 2);
+	}
+	else
+	{
+		alert('oops');
+	}
+
+	// Build the row of data cells.
+	$('<td/>').text(el.user).appendTo(tr);
+	$('<td/>').text(el.date).appendTo(tr);
+	$('<td/>').text(el.category).appendTo(tr);
+	$('<td/>').text(el.title).appendTo(tr);
+	$('<td/>').text(el.content).appendTo(tr);
+	$('<td/>').text(el.up).addClass('votes').appendTo(tr);
+	$('<td/>').text(el.dn).addClass('votes').appendTo(tr);
+
+	// Enable edit/delete of our own entries.
+	if ((el.user) == MMY.user ||
+		MMY.admin == '1')
+	{
+		var buttonID = 'button-del_' + el.idx;
+		var button = '#' + buttonID;
+		var attributes = { id: buttonID,
+						   type: "button",
+						   value: "Delete" };
+
+		$('<td/>').append($('<input/>').attr(attributes)).appendTo(tr);
+		$(button).click(MMY.dodelete);
+
+		if (MMY.admin == '1' &&
+			el.verified == '0')
+		{
+			var buttonID = 'button-ver_' + el.idx;
+			var button = '#' + buttonID;
+			var attributes = { id: buttonID,
+							   type: "button",
+							   value: "Verify" };
+
+			$('<td/>').append($('<input/>').attr(attributes)).appendTo(tr);
+			$(button).click(MMY.doverify);
+		}
+		else if (MMY.admin == '1' &&
+				 el.verified == '1')
+		{
+			var buttonID = 'button-unver_' + el.idx;
+			var button = '#' + buttonID;
+			var attributes = { id: buttonID,
+							   type: "button",
+							   value: "Unverify" };
+
+			$('<td/>').append($('<input/>').attr(attributes)).appendTo(tr);
+			$(button).click(MMY.dounverify);
+		}
+		else
+		{
+			var buttonID = 'button-ed_' + el.idx;
+			var button = '#' + buttonID;
+			var attributes = { id: buttonID,
+							   type: "button",
+							   value: "Edit",
+							   disabled: "disabled" };
+
+			$('<td/>').append($('<input/>').attr(attributes)).appendTo(tr);
+			$(button).click(MMY.doedit);
+		}
+	}
+	// Enable upvote/downvote other user's entries.
+	else if (el.user !== MMY.user &&
+			 el.rankable == '1')
+	{
+		// TO DO: Use the same td for both buttons.
+		var buttonID = 'button-up_' + el.idx;
+		var button = '#' + buttonID;
+		var attributes = { id: buttonID,
+						   type: "button",
+						   value: "Vote Up" };
+
+		$('<td/>').append($('<input/>').attr(attributes)).appendTo(tr);
+		$(button).click(MMY.doupvote);
+
+		var buttonID = 'button-dn_' + el.idx;
+		var button = '#' + buttonID;
+		var attributes = { id: buttonID,
+						   type: "button",
+						   value: "Vote Down" };
+
+		$('<td/>').append($('<input/>').attr(attributes)).appendTo(tr);
+		$(button).click(MMY.dodnvote);
+	}
+	else
+	{
+		$('<td/>').attr("colspan", "2").appendTo(tr);
+	}
+
+}
+
+// Called via EACH, uses $(this)
+MMY.addxmlword = function()
+{
+	var trID = 'tr_' + $(this).attr('idx');
+	var tr   = '#' + trID;
+
+	if ($(tr).size() == 1) // Already exists, clear it.
+	{
+		$(tr).empty();
+	}
+	else if ($(tr).size() == 0) // Does not exist, create a new one.
+	{
+		$('<tr/>').attr('id', trID).appendTo('#wordstable tbody');
+		$(tr).addClass('Row Hilite' + ($('tr').size() - 1) % 2);
+	}
+	else
+	{
+		alert('oops');
+	}
+
+	// Build the row of data cells.
+	$('<td/>').text($(this).attr('user')).appendTo(tr);
+	$('<td/>').text($(this).attr('date')).appendTo(tr);
+	$('<td/>').text($(this).attr('category')).appendTo(tr);
+	$('<td/>').text($(this).attr('title')).appendTo(tr);
+	$('<td/>').text($(this).text()).appendTo(tr);
+	$('<td/>').text($(this).attr('up')).addClass('votes').appendTo(tr);
+	$('<td/>').text($(this).attr('dn')).addClass('votes').appendTo(tr);
+
+	// Enable edit/delete of our own entries.
+	if ($(this).attr('user') == MMY.user ||
+		MMY.admin == '1')
+	{
+		var buttonID = 'button-del_' + $(this).attr('idx');
+		var button = '#' + buttonID;
+		var attributes = { id: buttonID,
+						   type: "button",
+						   value: "Delete" };
+
+		$('<td/>').append($('<input/>').attr(attributes)).appendTo(tr);
+		$(button).click(MMY.dodelete);
+
+		if (MMY.admin == '1' &&
+			$(this).attr('verified') == '0')
+		{
+			var buttonID = 'button-ver_' + $(this).attr('idx');
+			var button = '#' + buttonID;
+			var attributes = { id: buttonID,
+							   type: "button",
+							   value: "Verify" };
+
+			$('<td/>').append($('<input/>').attr(attributes)).appendTo(tr);
+			$(button).click(MMY.doverify);
+		}
+		else if (MMY.admin == '1' &&
+				 $(this).attr('verified') == '1')
+		{
+			var buttonID = 'button-unver_' + $(this).attr('idx');
+			var button = '#' + buttonID;
+			var attributes = { id: buttonID,
+							   type: "button",
+							   value: "Unverify" };
+
+			$('<td/>').append($('<input/>').attr(attributes)).appendTo(tr);
+			$(button).click(MMY.dounverify);
+		}
+		else
+		{
+			var buttonID = 'button-ed_' + $(this).attr('idx');
+			var button = '#' + buttonID;
+			var attributes = { id: buttonID,
+							   type: "button",
+							   value: "Edit",
+							   disabled: "disabled" };
+
+			$('<td/>').append($('<input/>').attr(attributes)).appendTo(tr);
+			$(button).click(MMY.doedit);
+		}
+	}
+	// Enable upvote/downvote other user's entries.
+	else if ($(this).attr('user') !== MMY.user &&
+			 $(this).attr('rankable') == '1')
+	{
+		// TO DO: Use the same td for both buttons.
+		var buttonID = 'button-up_' + $(this).attr('idx');
+		var button = '#' + buttonID;
+		var attributes = { id: buttonID,
+						   type: "button",
+						   value: "Vote Up" };
+
+		$('<td/>').append($('<input/>').attr(attributes)).appendTo(tr);
+		$(button).click(MMY.doupvote);
+
+		var buttonID = 'button-dn_' + $(this).attr('idx');
+		var button = '#' + buttonID;
+		var attributes = { id: buttonID,
+						   type: "button",
+						   value: "Vote Down" };
+
+		$('<td/>').append($('<input/>').attr(attributes)).appendTo(tr);
+		$(button).click(MMY.dodnvote);
+	}
+	else
+	{
+		$('<td/>').attr("colspan", "2").appendTo(tr);
+	}
+}
+
+// Table update from XML - core of the application.
+MMY.gotxmlwords = function(xml)
+{
+	$('word', xml).each(MMY.addxmlword);
+}
+
+// Table update from XML - core of the application.
+MMY.gotjsonwords = function(json)
+{
+	for (var i = 0; i < json.length; i++)
+	{
+		var o = json[i];
+//		alert(json[i].idx);
+	}
+	$(json).each(function(i, el) { MMY.addjsonword(i, el); });
+}
+
+MMY.dodelete = function()
+{
+    var id = $(this).attr('id').split('_')[1];
+
+    $.delete_("/entry/" + id, MMY.donedelete);
+}
+
+MMY.donedelete = function()
+{
+    MMY.getallwords();
+}
+
+MMY.doupvote = function()
+{
+    var id = $(this).attr('id').split('_')[1];
+
+    $.post("/entry/" + id + "/upvote", MMY.donevote);
+}
+
+MMY.dodnvote = function()
+{
+    var id = $(this).attr('id').split('_')[1];
+
+    $.post("/entry/" + id + "/dnvote", MMY.donevote);
+}
+
+MMY.donevote = function(xml)
+{
+//    MMY.gotallwords(xml);
+    MMY.gotxmlwords(xml);
+    MMY.getpopular();
+    MMY.getpopularN();
+}
+
+MMY.doverify = function()
+{
+    var id = $(this).attr('id').split('_')[1];
+
+    $.post("/entry/" + id + "/verify", MMY.donevote);
+//    $.post("/entry/" + id + "/verify", MMY.doneverify);
+}
+
+MMY.dounverify = function()
+{
+    var id = $(this).attr('id').split('_')[1];
+
+    $.post("/entry/" + id + "/unverify", MMY.donevote);
+//    $.post("/entry/" + id + "/verify", MMY.doneverify);
+}
+
+MMY.doneverify = function()
+{
+	alert('done verify');
+}
+
+MMY.getprofile = function()
+{
+    $.getJSON("/profile", MMY.gotprofile);
+}
+
+MMY.gotprofile = function(json)
+{
+    // Hide all content.
+    $("#contentpane").hide();
+    $("#wordsform").hide();
+
+    // Show/populate form.
+    $("#profileform").show("slow");
+    $("#profileidx").val(json.idx);
+    $("#profileuser").val(json.user);
+    $("#profilepass").val(json.pass);
+
+    $("#saveuser").click(MMY.saveprofile);
+    $("#canceluser").click(MMY.doneprofile);
+}
+
+MMY.showsignup = function ()
+{
+    // Hide all content.
+    $("#contentpane").hide();
+    $("#wordsform").hide();
+
+    $("#profileform").show();
+
+    $("#saveuser").click(MMY.signup);
+    $("#canceluser").click(MMY.doneprofile);
+}
+
+// Signup a NEW user.
+MMY.signup = function()
+{
+    var params = { user: $("#profileuser").val(),
+				   pass: $("#profilepass").val() };
+
+    $.post("/profile", params, MMY.donelogin, "json");
+}
+
+MMY.donesignup = function (json)
+{
+//	alert(json);
+    window.location = "/";
+}
+
+// Update an EXISTING user.
+MMY.saveprofile = function()
+{
+    var idx = $("#profileidx").val();
+    var params = { idx: idx,
+				   user: $("#profileuser").val(),
+				   pass: $("#profilepass").val() };
+
+//	alert(idx);
+//    $.put("/profile/" + idx, params, MMY.doneprofile);
+    $.post("/profile", params, MMY.donelogin, "json");
+}
+
+MMY.doneprofile = function()
+{
+    $("#profileform").hide("slow");
+
+    $("#contentpane").show("slow");
+    $("#wordsform").show("slow");
+
+    MMY.getallwords();
+}
+
+MMY.hidelogin = function()
+{
+    $("#loginform").hide("slow");
+    $('#login_message').hide();
+}
+
+MMY.getpopular = function()
+{
+    var params = { pop: "t" };
+
+    $.get("/entry", params, MMY.gotpopular);
+}
+
+MMY.getpopularN = function()
+{
+    var params = { pop: "t", n: 5 };
+
+    $.get("/entry", params, MMY.gotpopularN);
+}
+
+MMY.gotpopular = function(xml)
+{
+    $('#topranked').html('<br/>Top ranked item:')
+    $('#topranked').append($('<ul/>').attr('id', 'ranklist'));
+
+    $('word', xml).each(function() {
+			var liID = 'li_' + $(this).attr('idx');
+			var li   = '#' + liID;
+
+			$('<li/>').text($(this).text()).attr('id', liID).appendTo('#ranklist');
+			if ($(this).attr('user') == MMY.user)
+			{
+				$(li).append($('<span/>').text(' Mine!').addClass('Red'));
+//				$(li).addClass('Red');
+			}
+		});
+}
+
+MMY.gotpopularN = function(xml)
+{
+    $('#popularn').html('Top ranked items: ');
+    $('#popularn').append($('<ul/>').attr('id', 'poplist'));
+
+    $('word', xml).each(function() {
+			var liID = 'lin_' + $(this).find('idx').text();
+			var li   = '#' + liID;
+			var content = $(this).find('content').text();
+
+			$('<li/>').attr('id', liID).text(content).appendTo('#poplist');
+			if ($(this).find('username').text() == MMY.user)
+			{
+//				$(li).append($('<span/>').text('Mine!').addClass('Red'));
+				$(li).addClass('Red');
+			}
+		});
+}
+
+MMY.searchwords = function()
+{
+    var params = { title: $("#q_title").val(),
+				   words: $("#q_words").val(),
+				   category: $("#q_categories").val() };
+
+    $.get("/entry", params, MMY.gotallwords); // reload this one
+
+//	$("#title").val('');
+//	$("#words").val('');
+}
+
+MMY.init = function()
+{
+    $("#showlogin").click(function() { $("#loginform").toggle("slow") });
+    $("#cancelbutton").click(MMY.hidelogin);
+
+    $("#loginbutton").click(MMY.dologin);
+    $("#getwords").click(MMY.getallwords);
+    $("#searchwords").click(function() { $("#queryform").toggle("slow") });
+    $("#q_button").click(MMY.searchwords);
+    $("#q_cancel").click(function() { $("#queryform").toggle("slow") });
+    $("#addbutton").click(MMY.addwords);
+
+    $.getJSON("/user", MMY.donelogin);
+//    $.getJSON("/login", MMY.donelogin);
+}
